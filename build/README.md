@@ -15,16 +15,12 @@ A CT/MRI scan is made of many flat 2D image slices. This pipeline:
 5. Exports the results as an annotated file + report (**output**)
 
 ## Current status
-- ✅ **Ingestion layer**: custom binary DICOM parser (no external DICOM
-  library used for parsing logic). Supports all 3 uncompressed transfer
-  syntaxes — Explicit VR Little Endian, Implicit VR Little Endian, and
-  Explicit VR Big Endian — auto-detected from the file's own metadata.
-  Cleanly rejects compressed transfer syntaxes (e.g. JPEG2000) instead
-  of misreading them. Extracts Modality, Rows, Columns, BitsAllocated,
-  and PixelData, and self-verifies pixel data size against the expected
-  `Rows × Columns × (BitsAllocated / 8)` calculation.
-  Includes a terminal ASCII-art preview of the parsed slice as a
-  built-in visual sanity check.
+- ✅ Ingestion layer: custom binary DICOM parser (no external DICOM
+  library used for parsing logic) that reads tag/VR/length/value
+  entries and extracts Modality, Rows, Columns, BitsAllocated, and
+  PixelData. Verified against a real sample CT file — extracted pixel
+  data size matches the expected `Rows × Columns × (BitsAllocated / 8)`
+  calculation exactly.
 - ⏳ Reconstruction, processing, detection, output — not started yet.
 
 ## Layout
@@ -33,7 +29,7 @@ A CT/MRI scan is made of many flat 2D image slices. This pipeline:
 - `src/processing/` — SIMD filters + thread pool (upcoming)
 - `src/detection/` — region growing anomaly detection (upcoming)
 - `src/output/` — annotated DICOM/JSON/PNG export (upcoming)
-- `samples/` — sample `.dcm` test files (explicit/implicit/big-endian variants)
+- `samples/` — sample `.dcm` test file(s)
 
 ## Build & run
 ```bash
@@ -41,7 +37,7 @@ mkdir -p build && cd build
 cmake ..
 make
 cd ..
-./build/ingestion_test samples/ct_small.dcm
+./build/ingestion_test
 ```
 
 ## Tech stack
