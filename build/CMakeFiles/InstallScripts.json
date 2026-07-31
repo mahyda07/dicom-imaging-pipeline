@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/mahida/projects/dicom-imaging-pipeline/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

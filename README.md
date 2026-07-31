@@ -1,49 +1,81 @@
 # DICOM Imaging Pipeline
 
-Part of the Tynovate Studio 2026 internship, Track B: a high-performance
-C++20 pipeline that reads raw medical scanner files (DICOM/.dcm) and
-processes them faster than typical hospital software, while flagging
-regions that look anomalous.
+**Tynovate Studio 2026 Internship — Track B**
 
-## What this project does
-A CT/MRI scan is made of many flat 2D image slices. This pipeline:
-1. Reads the raw scan files and pulls out the image data (**ingestion**)
-2. Stacks the 2D slices back into one 3D volume (**reconstruction**)
-3. Cleans up and sharpens the image (**processing**)
-4. Scans for unusually dense regions that may indicate a tumor or
-   calcification (**detection**)
-5. Exports the results as an annotated file + report (**output**)
+A C++20 pipeline that reads raw medical scanner files (DICOM/.dcm),
+reconstructs them into a 3D volume, and accelerates image processing with
+hand-written AVX2 SIMD intrinsics — built without relying on an external
+DICOM library for the core parsing logic.
 
-## Current status
-- ✅ **Ingestion layer**: custom binary DICOM parser (no external DICOM
-  library used for parsing logic). Supports all 3 uncompressed transfer
-  syntaxes — Explicit VR Little Endian, Implicit VR Little Endian, and
-  Explicit VR Big Endian — auto-detected from the file's own metadata.
-  Cleanly rejects compressed transfer syntaxes (e.g. JPEG2000) instead
-  of misreading them. Extracts Modality, Rows, Columns, BitsAllocated,
-  and PixelData, and self-verifies pixel data size against the expected
-  `Rows × Columns × (BitsAllocated / 8)` calculation.
-  Includes a terminal ASCII-art preview of the parsed slice as a
-  built-in visual sanity check.
-- ⏳ Reconstruction, processing, detection, output — not started yet.
+> **Status:** Weeks 5–6 complete and tested. See [`HANDOFF.md`](HANDOFF.md)
+> for a detailed, honest breakdown of exactly what's built vs. remaining —
+> read that before assuming anything here is further along than it is.
 
-## Layout
-- `src/ingestion/` — DICOM tag/pixel parser
-- `src/reconstruction/` — 2D slices → 3D volume (upcoming)
-- `src/processing/` — SIMD filters + thread pool (upcoming)
-- `src/detection/` — region growing anomaly detection (upcoming)
-- `src/output/` — annotated DICOM/JSON/PNG export (upcoming)
-- `samples/` — sample `.dcm` test files (explicit/implicit/big-endian variants)
+## What it does
+
+A CT/MRI scan is made of many flat 2D slices. This pipeline:
+
+| Stage | Status | What it does |
+|---|---|---|
+| **Ingestion** | ✅ Done | Custom binary parser extracts metadata + pixel data from raw `.dcm` files |
+| **Reconstruction** | ✅ Done | Stacks 2D slices into a 3D volume, with Hounsfield Unit normalization and spacing-aware resampling |
+| **Processing** | ✅ Filters done, thread pool pending | AVX2-accelerated Gaussian blur & Sobel edge detection, benchmarked vs. scalar |
+| **Detection** | ⏳ Not started | Region-growing anomaly detection |
+| **Output** | ⏳ Not started | Annotated DICOM / JSON / PNG export |
+
+## Highlights
+
+- **Hand-rolled DICOM parser** — supports all 3 uncompressed transfer
+  syntaxes (Explicit VR Little Endian, Implicit VR Little Endian, Explicit
+  VR Big Endian), auto-detected per file. Cleanly rejects compressed
+  syntaxes instead of misreading them.
+- **Spacing-aware 3D reconstruction** — resamples unevenly-spaced slices
+  onto a uniform grid via linear interpolation, rather than assuming
+  perfectly even input.
+- **AVX2 SIMD filters, correctness-verified against scalar** — Gaussian
+  blur and Sobel edge detection both produce output that exactly matches
+  their scalar reference implementation (max abs difference: 0), with
+  real measured speedups (build with `-O2`; see below for why that matters).
+- **Terminal visual previews** — both the ingestion and reconstruction
+  layers render ASCII-art previews of the actual parsed/reconstructed
+  data, so correctness is visually checkable, not just numeric.
 
 ## Build & run
+
 ```bash
 mkdir -p build && cd build
 cmake ..
 make
 cd ..
 ./build/ingestion_test samples/ct_small.dcm
+./build/reconstruction_test samples/series
+./build/processing_test samples/ct_small.dcm
+```
+
+> **Note on benchmarks:** `CMakeLists.txt` defaults to a `Release` build
+> (`-O2`) specifically because SIMD speedup numbers are meaningless without
+> optimization enabled on the scalar baseline too — an unoptimized build
+> understates both paths and distorts the comparison.
+
+## Repository layout
+
+```
+include/
+  dicom_parser.h     — shared binary DICOM parsing core (used by every module)
+  simd_filters.h      — generic scalar/AVX2 convolution engine + named filters
+src/
+  ingestion/          — single-slice metadata/pixel extraction + preview
+  reconstruction/      — multi-slice loading, sorting, HU conversion, 3D stacking
+  processing/           — Gaussian blur + Sobel edges (scalar + AVX2), histogram equalization
+  detection/            — region-growing anomaly detection (upcoming)
+  output/                — annotated DICOM/JSON/PNG export (upcoming)
+samples/                — test files, including a synthetic multi-slice series with a deliberate spacing gap
+ARCHITECTURE.md        — full design doc: all 5 layers, data structures, concurrency plan, roadmap
+HANDOFF.md              — authoritative, honest status: what's tested vs. what's left
 ```
 
 ## Tech stack
-C++20, CMake. (DCMTK used only as a reference tool via `dcmdump` to
-validate parser output — not linked into the build.)
+
+C++20, CMake, AVX2 intrinsics. DCMTK is used only as an external reference
+tool (`dcmdump`) to validate parser output during development — it is not
+linked into the build.
