@@ -48,10 +48,10 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /snap/cmake/1558/bin/cmake
+CMAKE_COMMAND = /snap/cmake/1560/bin/cmake
 
 # The command to remove a file.
-RM = /snap/cmake/1558/bin/cmake -E rm -f
+RM = /snap/cmake/1560/bin/cmake -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
@@ -68,7 +68,7 @@ CMAKE_BINARY_DIR = /home/mahida/projects/dicom-imaging-pipeline/build
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake cache editor..."
-	/snap/cmake/1558/bin/ccmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/snap/cmake/1560/bin/ccmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -78,7 +78,7 @@ edit_cache/fast: edit_cache
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake to regenerate build system..."
-	/snap/cmake/1558/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/snap/cmake/1560/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -155,6 +155,56 @@ processing_test/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/processing_test.dir/build.make CMakeFiles/processing_test.dir/build
 .PHONY : processing_test/fast
 
+#=============================================================================
+# Target rules for targets named detection_test
+
+# Build rule for target.
+detection_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 detection_test
+.PHONY : detection_test
+
+# fast build rule for target.
+detection_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/detection_test.dir/build.make CMakeFiles/detection_test.dir/build
+.PHONY : detection_test/fast
+
+#=============================================================================
+# Target rules for targets named thread_pool_test
+
+# Build rule for target.
+thread_pool_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 thread_pool_test
+.PHONY : thread_pool_test
+
+# fast build rule for target.
+thread_pool_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/thread_pool_test.dir/build.make CMakeFiles/thread_pool_test.dir/build
+.PHONY : thread_pool_test/fast
+
+src/detection/main.o: src/detection/main.cpp.o
+.PHONY : src/detection/main.o
+
+# target to build an object file
+src/detection/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/detection_test.dir/build.make CMakeFiles/detection_test.dir/src/detection/main.cpp.o
+.PHONY : src/detection/main.cpp.o
+
+src/detection/main.i: src/detection/main.cpp.i
+.PHONY : src/detection/main.i
+
+# target to preprocess a source file
+src/detection/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/detection_test.dir/build.make CMakeFiles/detection_test.dir/src/detection/main.cpp.i
+.PHONY : src/detection/main.cpp.i
+
+src/detection/main.s: src/detection/main.cpp.s
+.PHONY : src/detection/main.s
+
+# target to generate assembly for a file
+src/detection/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/detection_test.dir/build.make CMakeFiles/detection_test.dir/src/detection/main.cpp.s
+.PHONY : src/detection/main.cpp.s
+
 src/ingestion/main.o: src/ingestion/main.cpp.o
 .PHONY : src/ingestion/main.o
 
@@ -227,6 +277,30 @@ src/reconstruction/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/reconstruction_test.dir/build.make CMakeFiles/reconstruction_test.dir/src/reconstruction/main.cpp.s
 .PHONY : src/reconstruction/main.cpp.s
 
+tests/thread_pool_test.o: tests/thread_pool_test.cpp.o
+.PHONY : tests/thread_pool_test.o
+
+# target to build an object file
+tests/thread_pool_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/thread_pool_test.dir/build.make CMakeFiles/thread_pool_test.dir/tests/thread_pool_test.cpp.o
+.PHONY : tests/thread_pool_test.cpp.o
+
+tests/thread_pool_test.i: tests/thread_pool_test.cpp.i
+.PHONY : tests/thread_pool_test.i
+
+# target to preprocess a source file
+tests/thread_pool_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/thread_pool_test.dir/build.make CMakeFiles/thread_pool_test.dir/tests/thread_pool_test.cpp.i
+.PHONY : tests/thread_pool_test.cpp.i
+
+tests/thread_pool_test.s: tests/thread_pool_test.cpp.s
+.PHONY : tests/thread_pool_test.s
+
+# target to generate assembly for a file
+tests/thread_pool_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/thread_pool_test.dir/build.make CMakeFiles/thread_pool_test.dir/tests/thread_pool_test.cpp.s
+.PHONY : tests/thread_pool_test.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -235,9 +309,14 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... detection_test"
 	@echo "... ingestion_test"
 	@echo "... processing_test"
 	@echo "... reconstruction_test"
+	@echo "... thread_pool_test"
+	@echo "... src/detection/main.o"
+	@echo "... src/detection/main.i"
+	@echo "... src/detection/main.s"
 	@echo "... src/ingestion/main.o"
 	@echo "... src/ingestion/main.i"
 	@echo "... src/ingestion/main.s"
@@ -247,6 +326,9 @@ help:
 	@echo "... src/reconstruction/main.o"
 	@echo "... src/reconstruction/main.i"
 	@echo "... src/reconstruction/main.s"
+	@echo "... tests/thread_pool_test.o"
+	@echo "... tests/thread_pool_test.i"
+	@echo "... tests/thread_pool_test.s"
 .PHONY : help
 
 

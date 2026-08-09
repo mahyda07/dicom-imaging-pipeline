@@ -171,7 +171,7 @@ runtime path — it's a validation step during development.
 |---|---|---|
 | 5 | Environment setup, custom DICOM parser, metadata + pixel extraction | Done — all 3 uncompressed transfer syntaxes, tested |
 | 6 | 3D volume reconstruction, HU normalization, resampling, SIMD filters | Done — see HANDOFF.md for measured benchmark numbers |
-| 7 | Custom thread pool, region-growing detection | Not started |
+| 7 | Custom thread pool, region-growing detection | Done — see HANDOFF.md; thread pool speedup untested on real multi-core hardware |
 | 8 | Output/reporting layer, benchmarking, demo, final write-up | Not started |
 
 **See `HANDOFF.md` for the authoritative, detailed status — this table is

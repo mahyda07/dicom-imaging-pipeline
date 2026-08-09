@@ -31,3 +31,19 @@ add_executable(processing_test
 )
 target_include_directories(processing_test PRIVATE include)
 target_compile_options(processing_test PRIVATE -mavx2)
+
+find_package(Threads REQUIRED)
+target_link_libraries(processing_test PRIVATE Threads::Threads)
+
+# Week 7: detection layer — region growing anomaly detection
+add_executable(detection_test
+    src/detection/main.cpp
+)
+target_include_directories(detection_test PRIVATE include)
+
+# Week 7: thread pool correctness tests
+add_executable(thread_pool_test
+    tests/thread_pool_test.cpp
+)
+target_include_directories(thread_pool_test PRIVATE include)
+target_link_libraries(thread_pool_test PRIVATE Threads::Threads)

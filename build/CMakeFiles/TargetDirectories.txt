@@ -1,5 +1,7 @@
 /home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/ingestion_test.dir
 /home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/reconstruction_test.dir
 /home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/processing_test.dir
+/home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/detection_test.dir
+/home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/thread_pool_test.dir
 /home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/edit_cache.dir
 /home/mahida/projects/dicom-imaging-pipeline/build/CMakeFiles/rebuild_cache.dir
