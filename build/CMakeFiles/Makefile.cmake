@@ -128,4 +128,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/processing_test.dir/DependInfo.cmake"
   "CMakeFiles/detection_test.dir/DependInfo.cmake"
   "CMakeFiles/thread_pool_test.dir/DependInfo.cmake"
+  "CMakeFiles/output_test.dir/DependInfo.cmake"
   )

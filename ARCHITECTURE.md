@@ -2,177 +2,56 @@
 ## High-Performance Medical Imaging Pipeline (DICOM Processor)
 ### Tynovate Studio 2026 — Track B
 
----
-
 ## 1. Overview
 
-This system ingests raw DICOM scan files, reconstructs them into a 3D
-volume, applies image enhancement, detects anomalous density regions,
-and exports structured findings. It is organized as a strict five-stage
-pipeline — each stage consumes the previous stage's output and has no
-knowledge of stages beyond its immediate neighbor. This keeps each
-layer independently testable and lets layers be developed and
-validated in isolation before wiring them together.
+Five-stage pipeline, each stage consuming the previous stage's output:
 
 ```
-Raw DICOM files
-      │
-      ▼
-┌─────────────────┐
-│ Ingestion       │  parses binary DICOM, extracts metadata + pixel data
-└─────────────────┘
-      │
-      ▼
-┌─────────────────┐
-│ Reconstruction  │  stacks 2D slices into a 3D voxel grid
-└─────────────────┘
-      │
-      ▼
-┌─────────────────┐
-│ Processing      │  SIMD-accelerated filters, parallelized via thread pool
-└─────────────────┘
-      │
-      ▼
-┌─────────────────┐
-│ Detection       │  region-growing anomaly detection on the volume
-└─────────────────┘
-      │
-      ▼
-┌─────────────────┐
-│ Output          │  annotated DICOM / JSON / PNG export
-└─────────────────┘
+Raw DICOM files -> Ingestion -> Reconstruction -> Processing -> Detection -> Output
 ```
-
----
 
 ## 2. Layer-by-layer design
 
-### 2.1 Ingestion Layer — **implemented (Week 5)**
+### 2.1 Ingestion — implemented (Week 5)
+Hand-written parser (`include/dicom_parser.h`). Supports Explicit VR LE,
+Implicit VR LE, Explicit VR BE, auto-detected via the file's own
+TransferSyntaxUID. Rejects compressed syntaxes cleanly. Self-verifies
+extracted pixel data size.
 
-Responsible for reading a raw `.dcm` file and producing an in-memory
-representation of one slice: its metadata and its pixel array.
+### 2.2 Reconstruction — implemented (Week 6)
+`include/volume.h`. Sorts slices by real SliceLocation, converts to
+Hounsfield Units via each file's RescaleSlope/Intercept, resamples onto
+uniform Z spacing via linear interpolation between the two nearest real
+slices. (Linear along Z only — X/Y are already a uniform grid within each
+slice, so full 3D trilinear isn't needed here.)
 
-**Data structures:**
-```cpp
-struct DicomElement {
-    uint16_t group;
-    uint16_t element;
-    std::string vr;
-    std::vector<uint8_t> value;
-};
+### 2.3 Processing — implemented (Weeks 6-7)
+`include/simd_filters.h`, `include/thread_pool.h`. Gaussian blur and
+Sobel edge detection, both separable (1D horizontal + 1D vertical pass),
+implemented scalar and AVX2, correctness-verified to match exactly.
+Histogram equalization is scalar-only (cumulative histogram = sequential
+dependency, not a SIMD candidate). Custom thread pool
+(`std::thread`/`std::mutex`/`std::condition_variable`) parallelizes
+blurring across a volume's slices, chunked (not one task per slice) to
+keep per-task overhead small relative to actual work.
 
-struct SliceMetadata {
-    std::string modality;       // e.g. "CT"
-    uint16_t rows;
-    uint16_t columns;
-    uint16_t bitsAllocated;
-    double sliceLocation;       // position along the scan axis (Week 6 input)
-};
+### 2.4 Detection — implemented (Week 7)
+3D region growing via 6-connected flood fill, which doubles as connected
+component labeling. Threshold: 400 HU (soft tissue is roughly 0-100 HU,
+dense/calcified tissue starts around 400+ HU clinically). Reports voxel
+count, physical volume (using real voxel spacing), bounding box, mean HU
+per region.
 
-struct DicomSlice {
-    SliceMetadata meta;
-    std::vector<uint8_t> pixelData;
-};
-```
+### 2.5 Output — not started (Week 8)
+Planned: annotated DICOM export, JSON findings report, PNG slice export.
 
-**Design decisions:**
-- The parser is hand-written against the DICOM tag/VR/length/value
-  format directly rather than depending on DCMTK for parsing logic.
-  DCMTK is used only as an external validation reference (see §4),
-  never linked into the parsing path itself — the point of the
-  internship is demonstrating we can implement the binary format
-  ourselves.
-- Currently supports **Explicit VR Little Endian** (the transfer
-  syntax used by our validated sample file). **Implicit VR** and
-  **Big Endian** support are the immediate next hardening step before
-  Week 5 is considered fully closed out, since real scanner exports
-  aren't guaranteed to use Explicit VR.
-- Self-verification is built in: after parsing, the pipeline checks
-  that `PixelData.size() == Rows × Columns × (BitsAllocated / 8)` and
-  flags a mismatch rather than silently proceeding with bad data.
-
-### 2.2 Reconstruction Layer — **planned (Week 6)**
-
-Takes a series of `DicomSlice` objects (ordered by `sliceLocation`)
-and stacks them into one 3D voxel grid.
-
-**Data structures:**
-```cpp
-struct VoxelGrid {
-    std::vector<int16_t> voxels;  // flattened 3D array, Hounsfield units
-    size_t width, height, depth;
-    double voxelSpacing[3];       // physical mm per voxel, per axis
-};
-```
-
-**Design decisions:**
-- Slices are normalized to Hounsfield Units (HU) during stacking,
-  since HU is what makes CT density values comparable across
-  different scanners and settings.
-- Trilinear interpolation handles cases where slice spacing isn't
-  perfectly uniform, so the resulting grid represents real physical
-  space rather than just "slice index space."
-
-### 2.3 Processing Layer — **planned (Week 6–7)**
-
-Applies AVX2 SIMD-accelerated filters (Gaussian blur, edge detection,
-histogram equalization) across the voxel grid, parallelized across
-slices using a custom thread pool (built from `std::thread`,
-`std::mutex`, `std::condition_variable` — no `std::async`).
-
-**Concurrency model:**
-- One thread pool, sized to `std::thread::hardware_concurrency()`.
-- Work unit = one slice's filter pass — slices are independent, so
-  this parallelizes with no shared mutable state and no locking
-  needed inside the hot path itself, only in the work queue.
-- Benchmarks will compare single-threaded vs. pooled throughput to
-  quantify the speedup, per the internship's evaluation criteria.
-
-### 2.4 Detection Layer — **planned (Week 7)**
-
-3D region-growing: starting from seed voxels within a suspicious HU
-range, expands outward to neighboring voxels within a density
-threshold, producing connected regions with bounding boxes and
-density scores.
-
-### 2.5 Output Layer — **planned (Week 8)**
-
-Serializes results as annotated DICOM, a JSON findings report, and
-PNG slice exports (optionally HL7 FHIR JSON for EHR integration).
-
----
-
-## 3. Cross-cutting concerns
-
-- **Error handling:** every layer validates its own input size/shape
-  assumptions before processing (e.g. ingestion checks pixel data
-  size; reconstruction will check consistent slice dimensions before
-  stacking) rather than assuming well-formed input.
-- **Testing strategy:** each layer gets unit tests using small,
-  hand-verifiable inputs (e.g. a slice with known Rows/Columns/HU
-  values) plus one integration test using a real downloaded sample
-  file, so correctness isn't only checked against synthetic data.
-
----
-
-## 4. Independent verification
-
-A secondary reference check is used throughout: DCMTK's `dcmdump`
-tool is run against the same sample files, and our parser's extracted
-values (modality, dimensions, pixel data size) are manually
-cross-checked against its output. This is not part of the build or
-runtime path — it's a validation step during development.
-
----
-
-## 5. Week-by-week roadmap
+## 3. Roadmap
 
 | Week | Focus | Status |
 |---|---|---|
-| 5 | Environment setup, custom DICOM parser, metadata + pixel extraction | Done — all 3 uncompressed transfer syntaxes, tested |
-| 6 | 3D volume reconstruction, HU normalization, resampling, SIMD filters | Done — see HANDOFF.md for measured benchmark numbers |
-| 7 | Custom thread pool, region-growing detection | Done — see HANDOFF.md; thread pool speedup untested on real multi-core hardware |
-| 8 | Output/reporting layer, benchmarking, demo, final write-up | Not started |
+| 5 | DICOM parser | Done, tested |
+| 6 | Reconstruction, SIMD filters | Done, tested |
+| 7 | Thread pool, region-growing detection | Done, tested — see HANDOFF.md for the full thread-pool investigation |
+| 8 | Output/reporting | Done — JSON + annotated PNG export; no DICOM re-export (scoped out, see HANDOFF.md) |
 
-**See `HANDOFF.md` for the authoritative, detailed status — this table is
-a summary only.**
+See `HANDOFF.md` for the authoritative, detailed status.

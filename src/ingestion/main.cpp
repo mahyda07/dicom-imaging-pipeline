@@ -2,11 +2,6 @@
 #include <iostream>
 #include <algorithm>
 
-// Renders the parsed pixel data as a small ASCII-art image directly in the
-// terminal — no image library involved, just mapping raw brightness values
-// to characters of increasing visual density. This lets you *see* the scan
-// immediately after parsing, which is a genuinely useful sanity check no
-// plain metadata dump gives you.
 void printAsciiPreview(const std::vector<uint8_t>& pixelData, uint16_t rows, uint16_t columns,
                         uint16_t bitsAllocated, TransferSyntax syntax) {
     if (bitsAllocated != 16 || pixelData.size() < size_t(rows) * columns * 2) {

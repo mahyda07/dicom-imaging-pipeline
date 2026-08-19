@@ -5,25 +5,12 @@
 #include <array>
 #include <algorithm>
 
-// One detected region: a connected group of voxels all above the density
-// threshold, described the way a radiologist would want to see it — where
-// it is, how big it is, and how dense.
 struct Region {
     size_t voxelCount = 0;
     size_t minX = SIZE_MAX, maxX = 0, minY = SIZE_MAX, maxY = 0, minZ = SIZE_MAX, maxZ = 0;
     double meanHU = 0.0;
 };
 
-// 3D region growing via 6-connected flood fill: starting from any
-// above-threshold voxel not yet visited, expand to its 6 face-adjacent
-// neighbors (not diagonal) as long as they're also above threshold. Every
-// voxel visited this way belongs to the same connected component — this
-// flood fill IS the connected-component labeling, not a separate pass.
-//
-// Threshold rationale: +400 HU sits solidly above soft tissue (roughly
-// 0 to +100 HU) and below/at the start of dense bone/calcification
-// (roughly +400 and up clinically), so it separates "normal tissue" from
-// "worth flagging" without being tuned to this specific test volume.
 std::vector<Region> findAnomalousRegions(const VoxelGrid& grid, int16_t threshold,
                                           size_t minRegionVoxels = 8) {
     std::vector<bool> visited(grid.voxels.size(), false);
@@ -37,8 +24,6 @@ std::vector<Region> findAnomalousRegions(const VoxelGrid& grid, int16_t threshol
                 size_t idx = index(x, y, z);
                 if (visited[idx] || grid.voxels[idx] < threshold) continue;
 
-                // Found a new, unvisited above-threshold voxel — grow a
-                // fresh region from here via breadth-first flood fill.
                 Region region;
                 long long huSum = 0;
                 std::queue<std::array<size_t, 3>> frontier;
@@ -55,7 +40,6 @@ std::vector<Region> findAnomalousRegions(const VoxelGrid& grid, int16_t threshol
                     region.minY = std::min(region.minY, cy); region.maxY = std::max(region.maxY, cy);
                     region.minZ = std::min(region.minZ, cz); region.maxZ = std::max(region.maxZ, cz);
 
-                    // 6-connected neighbors: +/-1 along each of the 3 axes.
                     static const int dx[] = {1, -1, 0, 0, 0, 0};
                     static const int dy[] = {0, 0, 1, -1, 0, 0};
                     static const int dz[] = {0, 0, 0, 0, 1, -1};
@@ -77,10 +61,6 @@ std::vector<Region> findAnomalousRegions(const VoxelGrid& grid, int16_t threshol
                 }
 
                 region.meanHU = double(huSum) / region.voxelCount;
-                // Filter out tiny noise blobs (a handful of stray bright
-                // voxels) rather than reporting every single one as a
-                // "finding" — a real radiologist wouldn't care about a
-                // 2-voxel speckle.
                 if (region.voxelCount >= minRegionVoxels) regions.push_back(region);
             }
         }

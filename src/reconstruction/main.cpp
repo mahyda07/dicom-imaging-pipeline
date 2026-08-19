@@ -1,10 +1,6 @@
 #include "volume.h"
 #include <iostream>
 
-// ASCII cross-section through the middle of the volume along the Z axis —
-// i.e. a sagittal-style slice showing the stack from the *side*, not the
-// original top-down view. Only possible once slices are genuinely stacked
-// into a 3D grid — a concrete visual proof reconstruction actually worked.
 void printSagittalPreview(const VoxelGrid& grid) {
     if (grid.depth < 2) {
         std::cout << "(Need at least 2 slices for a sagittal preview)\n";

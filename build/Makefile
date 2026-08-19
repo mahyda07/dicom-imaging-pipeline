@@ -181,6 +181,19 @@ thread_pool_test/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/thread_pool_test.dir/build.make CMakeFiles/thread_pool_test.dir/build
 .PHONY : thread_pool_test/fast
 
+#=============================================================================
+# Target rules for targets named output_test
+
+# Build rule for target.
+output_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 output_test
+.PHONY : output_test
+
+# fast build rule for target.
+output_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/output_test.dir/build.make CMakeFiles/output_test.dir/build
+.PHONY : output_test/fast
+
 src/detection/main.o: src/detection/main.cpp.o
 .PHONY : src/detection/main.o
 
@@ -228,6 +241,30 @@ src/ingestion/main.s: src/ingestion/main.cpp.s
 src/ingestion/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ingestion_test.dir/build.make CMakeFiles/ingestion_test.dir/src/ingestion/main.cpp.s
 .PHONY : src/ingestion/main.cpp.s
+
+src/output/main.o: src/output/main.cpp.o
+.PHONY : src/output/main.o
+
+# target to build an object file
+src/output/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/output_test.dir/build.make CMakeFiles/output_test.dir/src/output/main.cpp.o
+.PHONY : src/output/main.cpp.o
+
+src/output/main.i: src/output/main.cpp.i
+.PHONY : src/output/main.i
+
+# target to preprocess a source file
+src/output/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/output_test.dir/build.make CMakeFiles/output_test.dir/src/output/main.cpp.i
+.PHONY : src/output/main.cpp.i
+
+src/output/main.s: src/output/main.cpp.s
+.PHONY : src/output/main.s
+
+# target to generate assembly for a file
+src/output/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/output_test.dir/build.make CMakeFiles/output_test.dir/src/output/main.cpp.s
+.PHONY : src/output/main.cpp.s
 
 src/processing/main.o: src/processing/main.cpp.o
 .PHONY : src/processing/main.o
@@ -311,6 +348,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... detection_test"
 	@echo "... ingestion_test"
+	@echo "... output_test"
 	@echo "... processing_test"
 	@echo "... reconstruction_test"
 	@echo "... thread_pool_test"
@@ -320,6 +358,9 @@ help:
 	@echo "... src/ingestion/main.o"
 	@echo "... src/ingestion/main.i"
 	@echo "... src/ingestion/main.s"
+	@echo "... src/output/main.o"
+	@echo "... src/output/main.i"
+	@echo "... src/output/main.s"
 	@echo "... src/processing/main.o"
 	@echo "... src/processing/main.i"
 	@echo "... src/processing/main.s"

@@ -1,9 +1,4 @@
 #pragma once
-// Shared 3D volume construction, used by both the reconstruction module
-// (which just displays/verifies the volume) and the detection module
-// (which analyzes it for anomalies). Same reasoning as dicom_parser.h:
-// one correct implementation beats two copies quietly drifting apart.
-
 #include "dicom_parser.h"
 #include <filesystem>
 #include <algorithm>
@@ -12,15 +7,10 @@
 
 namespace fs = std::filesystem;
 
-// The reconstructed 3D volume: a flat array standing in for a 3D grid, plus
-// the physical spacing that lets us relate a voxel index back to real
-// millimeters. We store Hounsfield Units (int16_t is enough — real HU
-// values run roughly -1000 to +3000), not raw pixel brightness, since HU is
-// the value that's actually comparable across different scans and scanners.
 struct VoxelGrid {
-    std::vector<int16_t> voxels; // flattened, index = z * (width*height) + y * width + x
+    std::vector<int16_t> voxels;
     size_t width = 0, height = 0, depth = 0;
-    double spacingX = 1.0, spacingY = 1.0, spacingZ = 1.0; // mm per voxel, each axis
+    double spacingX = 1.0, spacingY = 1.0, spacingZ = 1.0;
 
     int16_t at(size_t x, size_t y, size_t z) const {
         return voxels[z * width * height + y * width + x];
@@ -30,8 +20,6 @@ struct VoxelGrid {
     }
 };
 
-// Converts one slice's raw pixel bytes into Hounsfield Units using the
-// per-file rescale formula: HU = rawPixel * RescaleSlope + RescaleIntercept.
 inline std::vector<int16_t> toHounsfieldUnits(const ParsedSlice& slice) {
     size_t pixelCount = size_t(slice.rows) * slice.columns;
     std::vector<int16_t> hu(pixelCount);
@@ -45,11 +33,6 @@ inline std::vector<int16_t> toHounsfieldUnits(const ParsedSlice& slice) {
     return hu;
 }
 
-// Stacks a sorted series of slices into one uniform-spacing 3D volume,
-// resampling onto uniform Z spacing via linear interpolation between the
-// two nearest real slices (see README/HANDOFF for why this is linear along
-// Z rather than full 3D trilinear — X/Y are already a uniform pixel grid
-// within each slice, so only Z needs resampling).
 inline VoxelGrid stackSlicesIntoVolume(const std::vector<ParsedSlice>& sortedSlices,
                                        const std::vector<std::vector<int16_t>>& huSlices) {
     VoxelGrid grid;
@@ -92,10 +75,6 @@ inline VoxelGrid stackSlicesIntoVolume(const std::vector<ParsedSlice>& sortedSli
     return grid;
 }
 
-// Loads every .dcm file in `dir`, sorts by physical SliceLocation, validates
-// consistent geometry, and stacks into a VoxelGrid. Returns an empty
-// (depth == 0) grid on failure, with a message already printed to stderr —
-// callers just need to check grid.depth > 0.
 inline VoxelGrid loadVolumeFromDirectory(const std::string& dir) {
     std::vector<ParsedSlice> slices;
     for (const auto& entry : fs::directory_iterator(dir)) {

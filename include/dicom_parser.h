@@ -1,9 +1,4 @@
 #pragma once
-// Shared DICOM parsing core, used by both the ingestion layer (single-slice
-// inspection) and the reconstruction layer (multi-slice stacking). Pulling
-// this into one header means both modules stay correct together instead of
-// two copies of the same binary-format logic silently drifting apart.
-
 #include <fstream>
 #include <string>
 #include <vector>
@@ -13,7 +8,6 @@
 
 enum class TransferSyntax { ExplicitLittleEndian, ImplicitLittleEndian, ExplicitBigEndian };
 
-// --- Endian helpers ---------------------------------------------------
 inline uint16_t swap16(uint16_t v) { return (v >> 8) | (v << 8); }
 inline uint32_t swap32(uint32_t v) {
     return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) |
@@ -27,9 +21,6 @@ inline uint16_t toU16(const std::vector<uint8_t>& v, TransferSyntax syntax) {
                : v[0] | (uint16_t(v[1]) << 8);
 }
 
-// Parses a DICOM decimal string (DS) VR — plain ASCII text holding a number,
-// e.g. "1.5" or "-125.3". Used for SliceLocation, RescaleSlope/Intercept,
-// and PixelSpacing, all of which DICOM stores as text, not binary numbers.
 inline double toDouble(const std::vector<uint8_t>& v) {
     std::string s(v.begin(), v.end());
     while (!s.empty() && (s.back() == '\0' || s.back() == ' ')) s.pop_back();
@@ -44,8 +35,6 @@ struct TagValue {
     std::vector<uint8_t> value;
 };
 
-// Reads exactly one (tag, VR, length, value) entry, in whatever encoding
-// `syntax` specifies. Returns false at end of file or on a truncated read.
 inline bool readTag(std::ifstream& file, TransferSyntax syntax, TagValue& out) {
     uint16_t group, element;
     file.read(reinterpret_cast<char*>(&group), 2);
@@ -82,7 +71,7 @@ inline bool readTag(std::ifstream& file, TransferSyntax syntax, TagValue& out) {
     }
 
     if (length == 0xFFFFFFFFu) {
-        out = {group, element, {}}; // undefined length (sequences) — not supported yet
+        out = {group, element, {}};
         return true;
     }
 
@@ -94,7 +83,6 @@ inline bool readTag(std::ifstream& file, TransferSyntax syntax, TagValue& out) {
     return true;
 }
 
-// Full result of parsing one DICOM slice: everything reconstruction needs.
 struct ParsedSlice {
     bool ok = false;
     std::string modality;
@@ -102,11 +90,11 @@ struct ParsedSlice {
     std::vector<uint8_t> pixelData;
     TransferSyntax syntax = TransferSyntax::ExplicitLittleEndian;
 
-    double sliceLocation = 0.0;      // (0020,1041) — position along the scan axis
-    double rescaleSlope = 1.0;       // (0028,1053) — defaults per DICOM spec if absent
-    double rescaleIntercept = 0.0;   // (0028,1052)
-    double pixelSpacingRow = 1.0;    // (0028,0030) first value — mm per pixel, row direction
-    double pixelSpacingCol = 1.0;    // (0028,0030) second value — mm per pixel, column direction
+    double sliceLocation = 0.0;
+    double rescaleSlope = 1.0;
+    double rescaleIntercept = 0.0;
+    double pixelSpacingRow = 1.0;
+    double pixelSpacingCol = 1.0;
 };
 
 inline ParsedSlice parseDicomFile(const std::string& path) {
@@ -142,7 +130,7 @@ inline ParsedSlice parseDicomFile(const std::string& path) {
         syntax = TransferSyntax::ExplicitBigEndian;
     } else if (transferSyntaxUID.rfind("1.2.840.10008.1.2.4", 0) == 0 ||
                transferSyntaxUID.rfind("1.2.840.10008.1.2.5", 0) == 0) {
-        return out; // compressed — unsupported, leave ok=false
+        return out;
     }
     out.syntax = syntax;
 
@@ -163,7 +151,6 @@ inline ParsedSlice parseDicomFile(const std::string& path) {
     }
 
     if (!pixelSpacingRaw.empty()) {
-        // PixelSpacing is a DS-VR multi-value field: "rowSpacing\colSpacing"
         std::string s(pixelSpacingRaw.begin(), pixelSpacingRaw.end());
         size_t backslash = s.find('\\');
         if (backslash != std::string::npos) {
